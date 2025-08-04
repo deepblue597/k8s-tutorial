@@ -9,6 +9,11 @@ app.get("/", (req, res) => {
   res.send(`Hello from ${hostname}!`);
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).send("OK"); // Health check endpoint
+  res.send("Server is healthy");
+});
+
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}/`);
 });

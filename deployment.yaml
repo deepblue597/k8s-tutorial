@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-web-hello
+spec:
+  selector:
+    matchLabels:
+      app: k8s-web-hello #specify which pods will be managed by this deployment
+  template:
+    metadata:
+      labels:
+        app: k8s-web-hello # same in matchLabels
+    spec: # which containers will be created
+      containers:
+        - name: k8s-web-hello
+          image: deepblue597/k8s-web-hello:latest # specify the image to use
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "250m" # half a CPU core 500m
+          ports:
+            - containerPort: 3000 # specify the port that the container listens on
