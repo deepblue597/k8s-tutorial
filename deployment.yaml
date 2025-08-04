@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   name: k8s-web-hello
 spec:
+  replicas: 3 # number of pods to run
   selector:
     matchLabels:
       app: k8s-web-hello #specify which pods will be managed by this deployment
