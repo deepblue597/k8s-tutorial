@@ -1,4 +1,4 @@
-import os
+import socket
 from fastapi import FastAPI
 
 app = FastAPI()
@@ -9,6 +9,6 @@ async def read_root():
 
 @app.get("/node")
 def read_node():
-    hostname = os.hostname()
+    hostname = socket.gethostname()
     return {"Node": hostname}
 

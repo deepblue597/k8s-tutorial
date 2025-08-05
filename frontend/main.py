@@ -25,3 +25,6 @@ def main():
     if st.button("Fetch Data"):
         response = fetch_data()
         st.write(response)
+
+if __name__ == "__main__":
+    main()
