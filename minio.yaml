@@ -1,0 +1,183 @@
+# MinIO Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: minio
+---
+# PVC only - PV created automatically
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pvc
+  namespace: minio
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard # This creates PV automatically
+  # Use 'default' or check: kubectl get storageclass
+---
+# ConfigMap for bucket creation script
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minio-bucket-script
+  namespace: minio
+data:
+  create-bucket.sh: |
+    #!/bin/bash
+    # Wait for MinIO to be ready
+    until mc alias set local http://localhost:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD; do
+      echo "Waiting for MinIO to be ready..."
+      sleep 5
+    done
+
+    # Create the 'river' bucket if it doesn't exist
+    mc mb local/river --ignore-existing
+    echo "Bucket 'river' created successfully"
+---
+# MinIO Deployment with persistent storage and bucket creation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: minio
+  labels:
+    app: minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+        # Main MinIO container
+        - name: minio
+          image: minio/minio:latest
+          command:
+            - /bin/bash
+            - -c
+          args:
+            - minio server /data --console-address :9001
+          ports:
+            - containerPort: 9000
+              name: api
+            - containerPort: 9001
+              name: console
+          env:
+            - name: MINIO_ROOT_USER
+              value: "minioadmin"
+            - name: MINIO_ROOT_PASSWORD
+              value: "minioadmin123" # Change this!
+          volumeMounts:
+            - name: storage
+              mountPath: /data
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          # Health checks
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+      # Init container to create bucket
+      initContainers:
+        - name: create-bucket
+          image: minio/mc:latest # MinIO Client
+          command:
+            - /bin/sh
+            - /scripts/create-bucket.sh
+          env:
+            - name: MINIO_ROOT_USER
+              value: "minioadmin"
+            - name: MINIO_ROOT_PASSWORD
+              value: "minioadmin123" # Must match main container
+          volumeMounts:
+            - name: bucket-script
+              mountPath: /scripts
+            - name: storage
+              mountPath: /data
+
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: minio-pvc # Using persistent storage now
+        - name: bucket-script
+          configMap:
+            name: minio-bucket-script
+            defaultMode: 0755 # Make script executable
+---
+# Internal Service (for backend communication)
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-service
+  namespace: minio
+  labels:
+    app: minio
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
+      name: api
+    - port: 9001
+      targetPort: 9001
+      protocol: TCP
+      name: console
+  selector:
+    app: minio
+---
+# External Service for UI access (ONLY Console, not API)
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-external
+  namespace: minio
+  labels:
+    app: minio
+spec:
+  type: LoadBalancer # For external access
+  ports:
+    - port: 9001 # Only expose console port externally for security
+      targetPort: 9001
+      protocol: TCP
+      name: console
+  # Note: We don't expose port 9000 externally for security
+  # Your backend should use the internal service
+  selector:
+    app: minio
+# Alternative: Use NodePort for development (no cloud LoadBalancer needed)
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: minio-nodeport
+#   namespace: minio
+# spec:
+#   type: NodePort
+#   ports:
+#   - port: 9001
+#     targetPort: 9001
+#     nodePort: 30901  # Access via http://node-ip:30901
+#   selector:
+#     app: minio
