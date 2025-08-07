@@ -7,7 +7,7 @@ spec:
     app: backend-service
   ports:
     - port: 8000
-      targetPort: 8000
+      targetPort: api
   type: ClusterIP
 
 ---
@@ -37,3 +37,4 @@ spec:
               cpu: "500m"
           ports:
             - containerPort: 8000
+              name: api

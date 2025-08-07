@@ -1,0 +1,241 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard
+spec:
+  volumes:
+    - name: kuard-data
+      hostPath:
+        path: /data/kuard
+        type: DirectoryOrCreate
+  containers:
+    - name: kuard
+      image: gcr.io/kuar-demo/kuard-amd64:blue
+      livenessProbe:
+        httpGet:
+          path: /healthy
+          port: 8080
+        initialDelaySeconds: 5
+        timeoutSeconds: 1
+        periodSeconds: 10
+        failureThreshold: 3
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "256Mi"
+          cpu: "200m"
+      volumeMounts:
+        - name: kuard-data
+          mountPath: /data
+      ports:
+        - containerPort: 8080
+          name: http
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alpaca-prod
+  labels:
+    app: alpaca
+    ver: "1"
+    env: prod
+spec:
+  replicas: 1 # Added missing replicas
+  selector:
+    matchLabels:
+      app: alpaca
+      env: prod
+  template:
+    metadata:
+      labels:
+        app: alpaca
+        env: prod
+    spec: # Fixed: proper pod spec
+      volumes: # Moved to correct location
+        - name: kuard-data
+          hostPath:
+            path: /data/kuard
+            type: DirectoryOrCreate
+      containers:
+        - name: kuard
+          image: gcr.io/kuar-demo/kuard-amd64:green
+          livenessProbe:
+            httpGet:
+              path: /healthy
+              port: 8080
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          volumeMounts:
+            - name: kuard-data
+              mountPath: /data
+          ports:
+            - containerPort: 8080
+              name: http
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alpaca-test
+  labels:
+    app: alpaca
+    ver: "2"
+    env: test
+spec:
+  replicas: 1 # Added missing replicas
+  selector:
+    matchLabels:
+      app: alpaca
+      env: test
+  template:
+    metadata:
+      labels:
+        app: alpaca
+        env: test
+    spec: # Fixed: added missing spec
+      volumes:
+        - name: kuard-data
+          hostPath:
+            path: /data/kuard
+            type: DirectoryOrCreate
+      containers:
+        - name: kuard
+          image: gcr.io/kuar-demo/kuard-amd64:green
+          livenessProbe:
+            httpGet:
+              path: /healthy
+              port: 8080
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          volumeMounts:
+            - name: kuard-data
+              mountPath: /data
+          ports:
+            - containerPort: 8080
+              name: http
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bandicoot-prod
+  labels:
+    app: bandicoot
+    ver: "2"
+    env: prod
+  annotations:
+    description: "Deployment for Bandicoot in production environment"
+    contact: "iasonas@example.com"
+spec:
+  replicas: 1 # Added missing replicas
+  selector:
+    matchLabels:
+      app: bandicoot
+      env: prod
+  template:
+    metadata:
+      labels:
+        app: bandicoot
+        env: prod
+    spec: # Fixed: added proper spec
+      volumes: # Moved to correct location
+        - name: kuard-data
+          hostPath:
+            path: /data/kuard
+            type: DirectoryOrCreate
+      containers:
+        - name: kuard
+          image: gcr.io/kuar-demo/kuard-amd64:green
+          livenessProbe:
+            httpGet:
+              path: /healthy
+              port: 8080
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          volumeMounts:
+            - name: kuard-data
+              mountPath: /data
+          ports:
+            - containerPort: 8080
+              name: http
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bandicoot-staging
+  labels:
+    app: bandicoot
+    ver: "2"
+    env: staging
+spec:
+  replicas: 1 # Added missing replicas
+  selector:
+    matchLabels:
+      app: bandicoot
+      env: staging
+  template:
+    metadata:
+      labels:
+        app: bandicoot
+        env: staging
+    spec:
+      volumes: # Fixed: moved to correct location
+        - name: kuard-data
+          hostPath:
+            path: /data/kuard
+            type: DirectoryOrCreate
+      containers:
+        - name: kuard
+          image: gcr.io/kuar-demo/kuard-amd64:green
+          livenessProbe:
+            httpGet:
+              path: /healthy
+              port: 8080
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          volumeMounts:
+            - name: kuard-data
+              mountPath: /data
+          ports:
+            - containerPort: 8080
+              name: http
