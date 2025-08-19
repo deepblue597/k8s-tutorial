@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: path-ingress
+  labels:
+    app.kubernetes.io/name: path-ingress
+spec:
+  defaultBackend:
+    service:
+      name: be-default
+      port:
+        number: 8000
+  rules:
+    - host: bandicoot.local
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: bandicoot
+                port:
+                  number: 8080
+          - pathType: Prefix
+            path: "/a/"
+            backend:
+              service:
+                name: alpaca
+                port:
+                  number: 8080

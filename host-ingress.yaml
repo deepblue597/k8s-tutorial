@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: host-ingress
+  labels:
+    app.kubernetes.io/name: host-ingress
+spec:
+  defaultBackend:
+    service:
+      name: be-default
+      port:
+        number: 8080
+  rules:
+    - host: alpaca.local
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: alpaca
+                port:
+                  number: 8080
