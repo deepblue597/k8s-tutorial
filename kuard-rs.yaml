@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: kuard
+  labels:
+    app: kuard
+    version: "2"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kuard
+      version: "2"
+  template:
+    metadata:
+      labels:
+        app: kuard
+        version: "2"
+    spec:
+      containers:
+        - name: kuard
+          image: "gcr.io/kuar-demo/kuard-amd64:green"
+#**Best practice:**
+#- Use **Deployment** (not ReplicaSet directly).
+#- Only use ReplicaSet directly in rare cases (e.g., if you want a very specific, manual control over Pods without rollouts).
