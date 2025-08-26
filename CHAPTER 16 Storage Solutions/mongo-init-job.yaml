@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongo-replica-set-init
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mongo-init
+          image: mongo:4.2
+          command:
+            - bash
+            - -c
+            - |
+              echo "Starting MongoDB replica set initialization job..."
+              
+              # Wait for all MongoDB pods to be ready
+              echo "Waiting for MongoDB pods to be ready..."
+              for i in 0 1 2; do
+                echo "Checking mongo-auto-pv-${i}..."
+                until mongo --host mongo-auto-pv-${i}.mongo:27017 --eval "print('MongoDB ready on pod ${i}')"; do
+                  echo "Waiting for mongo-auto-pv-${i} to be ready..."
+                  sleep 5
+                done
+              done
+              
+              echo "All MongoDB pods are ready. Starting replica set initialization..."
+              
+              # Check if replica set is already initialized
+              if mongo --host mongo-auto-pv-0.mongo:27017 --eval "rs.status()" 2>/dev/null | grep -q '"ok" : 1'; then
+                echo "Replica set is already initialized. Exiting."
+                exit 0
+              fi
+              
+              # Run the initialization script
+              mongo --host mongo-auto-pv-0.mongo:27017 /scripts/init-replica-set.js
+              
+              echo "Replica set initialization job completed!"
+          volumeMounts:
+            - name: mongo-init-script
+              mountPath: /scripts
+              readOnly: true
+      volumes:
+        - name: mongo-init-script
+          configMap:
+            name: mongo-init-script
+            defaultMode: 0755

@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  labels:
+    app: mongo
+spec:
+  # This makes it a headless service
+  clusterIP: None
+
+  # Selector must match the StatefulSet pods
+  selector:
+    app: mongo
+
+  ports:
+    - name: mongodb
+      port: 27017
+      targetPort: 27017
+      protocol: TCP
+
+  # Optional: specify which pods should be considered ready
+  # publishNotReadyAddresses: false

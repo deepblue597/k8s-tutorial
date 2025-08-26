@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: database
+          image: mysql:8.0
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+          # Env var are not best practice for production, use secrets instead
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "yourpassword"
+          livenessProbe:
+            tcpSocket:
+              port: 3306
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: database
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: database
+          emptyDir: {} # Temporary storage for testing

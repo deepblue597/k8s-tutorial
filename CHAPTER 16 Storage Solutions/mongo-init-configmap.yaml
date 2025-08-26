@@ -1,0 +1,128 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-init-script
+data:
+  init-replica-set.js: |
+    // MongoDB Replica Set Initialization Script
+    // This script will be executed by the init container
+    
+    print("Starting MongoDB replica set initialization...");
+    
+    // Function to check if replica set is already initialized
+    function isReplicaSetInitialized() {
+      try {
+        var status = rs.status();
+        return status.ok === 1;
+      } catch (e) {
+        return false;
+      }
+    }
+    
+    // Function to wait for MongoDB to be ready
+    function waitForMongoDB() {
+      var maxAttempts = 30;
+      var attempt = 0;
+      
+      while (attempt < maxAttempts) {
+        try {
+          db.runCommand('ping');
+          print("MongoDB is ready!");
+          return true;
+        } catch (e) {
+          print("Waiting for MongoDB to be ready... attempt " + (attempt + 1));
+          sleep(2000); // Wait 2 seconds
+          attempt++;
+        }
+      }
+      throw new Error("MongoDB did not become ready in time");
+    }
+    
+    // Main initialization logic
+    try {
+      // Wait for MongoDB to be ready
+      waitForMongoDB();
+      
+      // Check if replica set is already initialized
+      if (isReplicaSetInitialized()) {
+        print("Replica set is already initialized. Exiting.");
+        quit(0);
+      }
+      
+      // Initialize replica set with primary only
+      print("Initializing replica set...");
+      var config = {
+        _id: 'rs0',
+        members: [
+          { _id: 0, host: 'mongo-auto-pv-0.mongo:27017' }
+        ]
+      };
+      
+      var result = rs.initiate(config);
+      if (result.ok !== 1) {
+        throw new Error("Failed to initialize replica set: " + JSON.stringify(result));
+      }
+      
+      print("Replica set initialized successfully!");
+      
+      // Wait for primary to be elected
+      print("Waiting for primary election...");
+      var maxWait = 30;
+      var waited = 0;
+      while (waited < maxWait) {
+        try {
+          var status = rs.status();
+          var primary = status.members.find(function(member) {
+            return member.stateStr === 'PRIMARY';
+          });
+          
+          if (primary) {
+            print("Primary elected: " + primary.name);
+            break;
+          }
+        } catch (e) {
+          // Ignore errors during election
+        }
+        
+        sleep(1000);
+        waited++;
+      }
+      
+      // Add secondary members
+      print("Adding secondary members...");
+      
+      // Add second member
+      try {
+        var addResult1 = rs.add('mongo-auto-pv-1.mongo:27017');
+        if (addResult1.ok === 1) {
+          print("Successfully added mongo-auto-pv-1");
+        } else {
+          print("Warning: Failed to add mongo-auto-pv-1: " + JSON.stringify(addResult1));
+        }
+      } catch (e) {
+        print("Error adding mongo-auto-pv-1: " + e);
+      }
+      
+      // Wait a bit before adding third member
+      sleep(2000);
+      
+      // Add third member
+      try {
+        var addResult2 = rs.add('mongo-auto-pv-2.mongo:27017');
+        if (addResult2.ok === 1) {
+          print("Successfully added mongo-auto-pv-2");
+        } else {
+          print("Warning: Failed to add mongo-auto-pv-2: " + JSON.stringify(addResult2));
+        }
+      } catch (e) {
+        print("Error adding mongo-auto-pv-2: " + e);
+      }
+      
+      print("Replica set initialization completed!");
+      print("Final status:");
+      printjson(rs.status());
+      
+    } catch (error) {
+      print("Error during replica set initialization: " + error);
+      quit(1);
+    }

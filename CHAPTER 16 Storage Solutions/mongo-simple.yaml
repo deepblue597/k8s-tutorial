@@ -1,0 +1,40 @@
+# SCENARIO 1: Using volumeClaimTemplates (RECOMMENDED - No manual PVs needed)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo-auto-pv
+spec:
+  selector:
+    matchLabels:
+      app: mongo
+  serviceName: "mongo"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:4.2
+          command:
+            - mongod
+            - "--replSet"
+            - rs0
+            - "--bind_ip_all"
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo-storage
+              mountPath: /data/db
+
+  # This automatically creates PVCs, which trigger automatic PV creation
+  volumeClaimTemplates:
+    - metadata:
+        name: mongo-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+        # Uses default StorageClass for automatic provisioning
